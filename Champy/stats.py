@@ -34,11 +34,11 @@ def calculate_speedup(df, baseline_df):
     return df
 
 
-def read_stat(data_dir, stat_name="CPU 0 cumulative IPC:"):
+def read_ipc(data_dir):
     """
-    Reads the specified stat from all files in the given directory and returns a DataFrame.
+    Reads the IPC from all files in the given directory and returns a DataFrame.
     """
-    data = []  # List to store (benchmark, stat_name) tuples
+    data = []  # List to store (benchmark, IPC) tuples
     for file in os.listdir(data_dir):
         if file.endswith(".txt"):
 
@@ -49,11 +49,11 @@ def read_stat(data_dir, stat_name="CPU 0 cumulative IPC:"):
             found_ipc = False
             with open(os.path.join(data_dir, file), "r") as f:
                 for line in f:
-                    if stat_name in line:
+                    if "CPU 0 cumulative IPC:" in line:
                         found_ipc = True
                         try:
                             # Extract the IPC value
-                            ipc_value = float(line.split(stat_name)[1].split()[0])
+                            ipc_value = float(line.split("CPU 0 cumulative IPC:")[1].split()[0])
                             # Append to list
                             data.append((file.split(".txt")[0], ipc_value))
                         except (IndexError, ValueError):
@@ -64,6 +64,44 @@ def read_stat(data_dir, stat_name="CPU 0 cumulative IPC:"):
 
     # Create DataFrame from the data
     df = pd.DataFrame(data, columns=["Benchmark", "IPC"])
+
+    # Sort the DataFrame by Benchmark name
+    df = df.sort_values(by=["Benchmark"])
+    df = df.reset_index(drop=True)
+
+    return df
+
+
+def read_stat(data_dir, stat):
+    """
+    Reads the stats from all files in the given directory and returns a DataFrame.
+    """
+    data = []  # List to store (benchmark, stat) tuples
+    for file in os.listdir(data_dir):
+        if file.endswith(".txt"):
+
+            if os.path.getsize(os.path.join(data_dir, file)) == 0:
+                print(f"File {file} is empty, directory: {data_dir}, skipping...")
+                continue
+
+            found_stat = False
+            with open(os.path.join(data_dir, file), "r") as f:
+                for line in f:
+                    if stat in line:
+                        found_stat = True
+                        try:
+                            # Extract the stat value
+                            stat_value = float(line.split(stat)[1])
+                            # Append to list
+                            data.append((file.split(".txt")[0], stat_value))
+                        except (IndexError, ValueError):
+                            print(f"Couldn't extract {stat} value from line: {line}")
+
+            if not found_stat:
+                print(f"{stat} value not found in file: {file} in directory: {data_dir}")
+
+    # Create DataFrame from the data
+    df = pd.DataFrame(data, columns=["Benchmark", stat])
 
     # Sort the DataFrame by Benchmark name
     df = df.sort_values(by=["Benchmark"])
